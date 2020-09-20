@@ -3,6 +3,7 @@
 #include <libutils/timer.h>
 #include <libutils/fast_random.h>
 
+#include <array>
 #include <vector>
 #include <sstream>
 #include <iostream>
@@ -10,6 +11,8 @@
 #include <fstream>
 #include <cassert>
 
+
+typedef std::vector<unsigned char> vchar;
 
 template <typename T>
 std::string to_string(T value)
@@ -33,6 +36,65 @@ void reportError(cl_int err, const std::string &filename, int line)
 
 #define OCL_SAFE_CALL(expr) reportError(expr, __FILE__, __LINE__)
 
+template<class T>
+void getPlatformProperty(cl_platform_id platform, cl_platform_info param_name, T* property) {
+    size_t propertySize = 0;
+    OCL_SAFE_CALL(clGetPlatformInfo(platform, param_name, 0, nullptr, &propertySize));
+    OCL_SAFE_CALL(clGetPlatformInfo(platform, param_name, propertySize, property, nullptr));
+}
+
+template<class T>
+void getDeviceIDs(cl_platform_id platform, cl_device_type device_type, cl_uint& devicesCount, T* devices) {
+    OCL_SAFE_CALL(clGetDeviceIDs(platform, device_type, 0, nullptr, &devicesCount));
+    OCL_SAFE_CALL(clGetDeviceIDs(platform, device_type, devicesCount, devices, nullptr));
+}
+
+template<class T>
+void getDeviceProperty(cl_device_id device, cl_device_info param_name, T* property) {
+    size_t propertySize = 0;
+    OCL_SAFE_CALL(clGetDeviceInfo(device, param_name, 0, nullptr, &propertySize));
+    OCL_SAFE_CALL(clGetDeviceInfo(device, param_name, propertySize, property, nullptr));
+}
+
+std::string getDeviceTypeName(cl_device_type deviceType) {
+    static std::array<std::string, 6> typeToString = {"DEFAULT", "CPU", "GPU", "ACCELERATOR", "CUSTOM", "ALL"};
+    return typeToString[deviceType - 1];
+}
+
+void printCLinfo() {
+    cl_uint platformsCount = 0;
+    OCL_SAFE_CALL(clGetPlatformIDs(0, nullptr, &platformsCount));
+    std::vector<cl_platform_id> platforms(platformsCount);
+    OCL_SAFE_CALL(clGetPlatformIDs(platformsCount, platforms.data(), nullptr));
+
+    for (cl_uint platformIndex = 0; platformIndex < platformsCount; ++platformIndex) {
+        std::cout << "Platform #" << (platformIndex + 1) << "/" << platformsCount << std::endl;
+        cl_platform_id platform = platforms[platformIndex];
+
+        vchar platformName(256, 0);
+        getPlatformProperty(platform, CL_PLATFORM_NAME, platformName.data());
+
+        cl_uint devicesCount = 0;
+        std::vector<cl_device_id> devices(8);
+        getDeviceIDs(platform, CL_DEVICE_TYPE_ALL, devicesCount, devices.data());
+
+        std::cout << "    Platform name: " << platformName.data() << std::endl;
+        std::cout << "    Platform devices count: " << devicesCount << std::endl;
+
+        for (cl_uint deviceIndex = 0; deviceIndex < devicesCount; ++deviceIndex) {
+            std::cout << "Device #" << (deviceIndex + 1) << "/" << devicesCount << std::endl;
+            cl_device_id device = devices[deviceIndex];
+
+            vchar deviceName(256, 0);
+            getDeviceProperty(device, CL_DEVICE_NAME, deviceName.data());
+            cl_device_type deviceType;
+            getDeviceProperty(device, CL_DEVICE_TYPE, &deviceType);
+
+            std::cout << "    device name: " << deviceName.data() << std::endl;
+            std::cout << "    device type: " << getDeviceTypeName(deviceType) << std::endl;
+        }
+    }
+}
 
 int main()
 {    
@@ -42,6 +104,7 @@ int main()
 
     // TODO 1 По аналогии с предыдущим заданием узнайте какие есть устройства, и выберите из них какое-нибудь
     // (если в списке устройств есть хоть одна видеокарта - выберите ее, если нету - выбирайте процессор)
+    printCLinfo();
 
     // TODO 2 Создайте контекст с выбранным устройством
     // См. документацию https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/ -> OpenCL Runtime -> Contexts -> clCreateContext
@@ -80,7 +143,7 @@ int main()
     {
         std::ifstream file("src/cl/aplusb.cl");
         kernel_sources = std::string(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
-        if (kernel_sources.size() == 0) {
+        if (kernel_sources.empty()) {
             throw std::runtime_error("Empty source file! May be you forgot to configure working directory properly?");
         }
         // std::cout << kernel_sources << std::endl;
