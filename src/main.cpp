@@ -216,6 +216,15 @@ int main()
     // TODO 7 Создайте OpenCL-подпрограмму с исходниками кернела
     // см. Runtime APIs -> Program Objects -> clCreateProgramWithSource
     // у string есть метод c_str(), но обратите внимание что передать вам нужно указатель на указатель
+    const char* kernel_sources_c_str = kernel_sources.c_str();
+    cl_program program = clCreateProgramWithSource(
+            context,
+            1, // count
+            &kernel_sources_c_str, // strings
+            nullptr, // lengths
+            &errcode_ret
+    );
+    OCL_SAFE_CALL(errcode_ret);
     
     // TODO 8 Теперь скомпилируйте программу и напечатайте в консоль лог компиляции
     // см. clBuildProgram
@@ -300,6 +309,7 @@ int main()
 //        }
 //    }
 
+    OCL_SAFE_CALL(clReleaseProgram(program));
     OCL_SAFE_CALL(clReleaseMemObject(cs_buffer));
     OCL_SAFE_CALL(clReleaseMemObject(bs_buffer));
     OCL_SAFE_CALL(clReleaseMemObject(as_buffer));
