@@ -3,8 +3,8 @@
 #include <libutils/timer.h>
 #include <libutils/fast_random.h>
 
-#include <array>
 #include <vector>
+#include <unordered_map>
 #include <sstream>
 #include <iostream>
 #include <stdexcept>
@@ -36,6 +36,11 @@ void reportError(cl_int err, const std::string &filename, int line)
 
 #define OCL_SAFE_CALL(expr) reportError(expr, __FILE__, __LINE__)
 
+void getPlatformIDs(cl_uint& platformsCount, cl_platform_id* platforms) {
+    OCL_SAFE_CALL(clGetPlatformIDs(0, nullptr, &platformsCount));
+    OCL_SAFE_CALL(clGetPlatformIDs(platformsCount, platforms, nullptr));
+}
+
 template<class T>
 void getPlatformProperty(cl_platform_id platform, cl_platform_info param_name, T* property) {
     size_t propertySize = 0;
@@ -43,8 +48,7 @@ void getPlatformProperty(cl_platform_id platform, cl_platform_info param_name, T
     OCL_SAFE_CALL(clGetPlatformInfo(platform, param_name, propertySize, property, nullptr));
 }
 
-template<class T>
-void getDeviceIDs(cl_platform_id platform, cl_device_type device_type, cl_uint& devicesCount, T* devices) {
+void getDeviceIDs(cl_platform_id platform, cl_device_type device_type, cl_uint& devicesCount, cl_device_id* devices) {
     OCL_SAFE_CALL(clGetDeviceIDs(platform, device_type, 0, nullptr, &devicesCount));
     OCL_SAFE_CALL(clGetDeviceIDs(platform, device_type, devicesCount, devices, nullptr));
 }
@@ -57,15 +61,20 @@ void getDeviceProperty(cl_device_id device, cl_device_info param_name, T* proper
 }
 
 std::string getDeviceTypeName(cl_device_type deviceType) {
-    static std::array<std::string, 6> typeToString = {"DEFAULT", "CPU", "GPU", "ACCELERATOR", "CUSTOM", "ALL"};
-    return typeToString[deviceType - 1];
+    static std::unordered_map<uint64_t, std::string> typeToString = {
+            {CL_DEVICE_TYPE_DEFAULT, "DEFAULT"},
+            {CL_DEVICE_TYPE_CPU, "CPU"},
+            {CL_DEVICE_TYPE_GPU, "GPU"},
+            {CL_DEVICE_TYPE_ACCELERATOR, "ACCELERATOR"},
+            {CL_DEVICE_TYPE_ALL, "ALL"}
+    };
+    return typeToString[deviceType];
 }
 
-void printCLinfo() {
+void selectDevice(cl_device_id& workDevice, cl_device_type& workDeviceType) {
     cl_uint platformsCount = 0;
-    OCL_SAFE_CALL(clGetPlatformIDs(0, nullptr, &platformsCount));
-    std::vector<cl_platform_id> platforms(platformsCount);
-    OCL_SAFE_CALL(clGetPlatformIDs(platformsCount, platforms.data(), nullptr));
+    std::vector<cl_platform_id> platforms(8);
+    getPlatformIDs(platformsCount, platforms.data());
 
     for (cl_uint platformIndex = 0; platformIndex < platformsCount; ++platformIndex) {
         std::cout << "Platform #" << (platformIndex + 1) << "/" << platformsCount << std::endl;
@@ -90,10 +99,17 @@ void printCLinfo() {
             cl_device_type deviceType;
             getDeviceProperty(device, CL_DEVICE_TYPE, &deviceType);
 
+            if (deviceIndex == 0 || deviceType == CL_DEVICE_TYPE_GPU) {
+                workDevice = device;
+                workDeviceType = deviceType;
+            }
+
             std::cout << "    device name: " << deviceName.data() << std::endl;
             std::cout << "    device type: " << getDeviceTypeName(deviceType) << std::endl;
         }
     }
+
+    std::cout << "Selected work device type: " << getDeviceTypeName(workDeviceType) << std::endl;
 }
 
 int main()
@@ -104,7 +120,9 @@ int main()
 
     // TODO 1 По аналогии с предыдущим заданием узнайте какие есть устройства, и выберите из них какое-нибудь
     // (если в списке устройств есть хоть одна видеокарта - выберите ее, если нету - выбирайте процессор)
-    printCLinfo();
+    cl_device_id workDevice;
+    cl_device_type workDeviceType = 0;
+    selectDevice(workDevice, workDeviceType);
 
     // TODO 2 Создайте контекст с выбранным устройством
     // См. документацию https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/ -> OpenCL Runtime -> Contexts -> clCreateContext
