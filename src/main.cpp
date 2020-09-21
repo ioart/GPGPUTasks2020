@@ -228,16 +228,41 @@ int main()
     
     // TODO 8 Теперь скомпилируйте программу и напечатайте в консоль лог компиляции
     // см. clBuildProgram
+    OCL_SAFE_CALL(clBuildProgram(
+            program,
+            0, // num_devices
+            nullptr, // device_list (if NULL, the program executable is built for all devices associated with program)
+            nullptr, // options
+            nullptr, // pfn_notify()
+            nullptr // user_data
+    ));
 
     // А так же напечатайте лог компиляции (он будет очень полезен, если в кернеле есть синтаксические ошибки - т.е. когда clBuildProgram вернет CL_BUILD_PROGRAM_FAILURE)
     // Обратите внимание что при компиляции на процессоре через Intel OpenCL драйвер - в логе указывается какой ширины векторизацию получилось выполнить для кернела
     // см. clGetProgramBuildInfo
-//    size_t log_size = 0;
-//    std::vector<char> log(log_size, 0);
-//    if (log_size > 1) {
-//        std::cout << "Log:" << std::endl;
-//        std::cout << log.data() << std::endl;
-//    }
+    size_t log_size = 0;
+    OCL_SAFE_CALL(clGetProgramBuildInfo(
+            program,
+            workDevice,
+            CL_PROGRAM_BUILD_LOG, // param_name
+            0, // param_value_size
+            nullptr, // param_value
+            &log_size // param_value_size_ret
+    ));
+
+    std::vector<char> log(log_size, 0);
+    OCL_SAFE_CALL(clGetProgramBuildInfo(
+            program,
+            workDevice,
+            CL_PROGRAM_BUILD_LOG, // param_name
+            log_size, // param_value_size
+            log.data(), // param_value
+            nullptr // param_value_size_ret
+    ));
+
+    if (!log.empty()) {
+        std::cout << "Log:\n" << log.data() << std::endl;
+    }
 
     // TODO 9 Создайте OpenCL-kernel в созданной подпрограмме (в одной подпрограмме может быть несколько кернелов, но в данном случае кернел один)
     // см. подходящую функцию в Runtime APIs -> Program Objects -> Kernel Objects
