@@ -12,6 +12,9 @@
 #include <cassert>
 
 
+std::size_t KB = 2ul << 10ul;
+std::size_t MB = KB << 10ul;
+std::size_t GB = MB << 10ul;
 typedef std::vector<unsigned char> vchar;
 
 template <typename T>
@@ -287,14 +290,28 @@ int main()
     // - см. clEnqueueNDRangeKernel
     // - Обратите внимание что чтобы дождаться окончания вычислений (чтобы знать когда можно смотреть результаты в cs_gpu) нужно:
     //   - Сохранить событие "кернел запущен" (см. аргумент "cl_event *event")
-    //   - Дождаться завершения полунного события - см. в документации подходящий метод среди Event Objects
+    //   - Дождаться завершения полученного события - см. в документации подходящий метод среди Event Objects
     {
         size_t workGroupSize = 128;
         size_t global_work_size = (n + workGroupSize - 1) / workGroupSize * workGroupSize;
         timer t; // Это вспомогательный секундомер, он замеряет время своего создания и позволяет усреднять время нескольких замеров
         for (unsigned int i = 0; i < 20; ++i) {
-            // clEnqueueNDRangeKernel...
-            // clWaitForEvents...
+            cl_event aplusb_event;
+            OCL_SAFE_CALL(clEnqueueNDRangeKernel(
+                    command_queue,
+                    aplusb_kernel,
+                    1, // work_dim
+                    nullptr, // global_work_offset,
+                    &global_work_size,
+                    &workGroupSize, // local_work_size,
+                    0, // num_events_in_wait_list,
+                    nullptr, // event_wait_list,
+                    &aplusb_event // event
+            ));
+            OCL_SAFE_CALL(clWaitForEvents(
+                    1, // num_events,
+                    &aplusb_event // event_list
+            ));
             t.nextLap(); // При вызове nextLap секундомер запоминает текущий замер (текущий круг) и начинает замерять время следующего круга
         }
         // Среднее время круга (вычисления кернела) на самом деле считаются не по всем замерам, а лишь с 20%-перцентайля по 80%-перцентайль (как и стандартное отклониение)
@@ -308,7 +325,8 @@ int main()
         // - Флопс - это число операций с плавающей точкой в секунду
         // - В гигафлопсе 10^9 флопсов
         // - Среднее время выполнения кернела равно t.lapAvg() секунд
-        std::cout << "GFlops: " << 0 << std::endl;
+        double GFlops = static_cast<double>(n) / t.lapAvg() / 1e9;
+        std::cout << "GFlops: " << GFlops << std::endl;
 
         // TODO 14 Рассчитайте используемую пропускную способность обращений к видеопамяти (в гигабайтах в секунду)
         // - Всего элементов в массивах по n штук
@@ -316,7 +334,8 @@ int main()
         // - Обращений к видеопамяти т.о. 2*n*sizeof(float) байт на чтение и 1*n*sizeof(float) байт на запись, т.е. итого 3*n*sizeof(float) байт
         // - В гигабайте 1024*1024*1024 байт
         // - Среднее время выполнения кернела равно t.lapAvg() секунд
-        std::cout << "VRAM bandwidth: " << 0 << " GB/s" << std::endl;
+        double bandwidth = 3.0*n*sizeof(float) / t.lapAvg() / GB;
+        std::cout << "VRAM bandwidth: " << bandwidth << " GB/s" << std::endl;
     }
 
     // TODO 15 Скачайте результаты вычислений из видеопамяти (VRAM) в оперативную память (RAM) - из cs_gpu в cs (и рассчитайте скорость трансфера данных в гигабайтах в секунду)
