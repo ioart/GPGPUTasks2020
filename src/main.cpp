@@ -129,11 +129,28 @@ int main()
     // Не забывайте проверять все возвращаемые коды на успешность (обратите внимание что в данном случае метод возвращает
     // код по переданному аргументом errcode_ret указателю)
     // И хорошо бы сразу добавить в конце clReleaseContext (да, не очень RAII, но это лишь пример)
+    cl_int errcode_ret;
+    cl_context context = clCreateContext(
+            nullptr, // properties
+            1, // num_devices
+            &workDevice, // devices,
+            nullptr, // callback
+            nullptr, // user_data
+            &errcode_ret
+    );
+    OCL_SAFE_CALL(errcode_ret);
 
     // TODO 3 Создайте очередь выполняемых команд в рамках выбранного контекста и устройства
     // См. документацию https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/ -> OpenCL Runtime -> Runtime APIs -> Command Queues -> clCreateCommandQueue
     // Убедитесь что в соответствии с документацией вы создали in-order очередь задач
-    // И хорошо бы сразу добавить в конце clReleaseQueue (не забывайте освобождать ресурсы)
+    // И хорошо бы сразу добавить в конце clReleaseCommandQueue (не забывайте освобождать ресурсы)
+    cl_command_queue command_queue = clCreateCommandQueue(
+            context,
+            workDevice,
+            0, // properties
+            &errcode_ret
+    );
+    OCL_SAFE_CALL(errcode_ret);
 
     unsigned int n = 1000*1000;
     // Создаем два массива псевдослучайных данных для сложения и массив для будущего хранения результата
@@ -253,6 +270,10 @@ int main()
 //            throw std::runtime_error("CPU and GPU results differ!");
 //        }
 //    }
+
+    errcode_ret = clReleaseCommandQueue(command_queue);
+    OCL_SAFE_CALL(errcode_ret);
+    clReleaseContext(context);
 
     return 0;
 }
