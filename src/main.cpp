@@ -162,7 +162,7 @@ int main()
         as[i] = r.nextf();
         bs[i] = r.nextf();
     }
-    std::cout << "Data generated for n=" << n << "!" << std::endl;
+    std::cout << "Data generated for n=" << n  << std::endl;
 
     // TODO 4 Создайте три буфера в памяти устройства (в случае видеокарты - в видеопамяти - VRAM) - для двух суммируемых массивов as и bs (они read-only) и для массива с результатом cs (он write-only)
     // См. Buffer Objects -> clCreateBuffer
@@ -170,6 +170,35 @@ int main()
     // Данные в as и bs можно прогрузить этим же методом скопировав данные из host_ptr=as.data() (и не забыв про битовый флаг на это указывающий)
     // или же через метод Buffer Objects -> clEnqueueWriteBuffer
     // И хорошо бы сразу добавить в конце clReleaseMemObject (аналогично все дальнейшие ресурсы вроде OpenCL под-программы, кернела и т.п. тоже нужно освобождать)
+    std::size_t buffer_size = n * sizeof(float);
+    cl_mem_flags flags = CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR;
+
+    cl_mem as_buffer = clCreateBuffer(
+            context,
+            flags,
+            buffer_size,
+            as.data(), // host_ptr
+            &errcode_ret
+    );
+    OCL_SAFE_CALL(errcode_ret);
+
+    cl_mem bs_buffer = clCreateBuffer(
+            context,
+            flags,
+            buffer_size,
+            bs.data(), // host_ptr
+            &errcode_ret
+    );
+    OCL_SAFE_CALL(errcode_ret);
+
+    cl_mem cs_buffer = clCreateBuffer(
+            context,
+            flags,
+            buffer_size,
+            cs.data(), // host_ptr
+            &errcode_ret
+    );
+    OCL_SAFE_CALL(errcode_ret);
 
     // TODO 6 Выполните TODO 5 (реализуйте кернел в src/cl/aplusb.cl)
     // затем убедитесь что выходит загрузить его с диска (убедитесь что Working directory выставлена правильно - см. описание задания)
@@ -271,9 +300,11 @@ int main()
 //        }
 //    }
 
-    errcode_ret = clReleaseCommandQueue(command_queue);
-    OCL_SAFE_CALL(errcode_ret);
-    clReleaseContext(context);
+    OCL_SAFE_CALL(clReleaseMemObject(cs_buffer));
+    OCL_SAFE_CALL(clReleaseMemObject(bs_buffer));
+    OCL_SAFE_CALL(clReleaseMemObject(as_buffer));
+    OCL_SAFE_CALL(clReleaseCommandQueue(command_queue));
+    OCL_SAFE_CALL(clReleaseContext(context));
 
     return 0;
 }
