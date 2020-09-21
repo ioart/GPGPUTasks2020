@@ -296,7 +296,7 @@ int main()
         size_t global_work_size = (n + workGroupSize - 1) / workGroupSize * workGroupSize;
         timer t; // Это вспомогательный секундомер, он замеряет время своего создания и позволяет усреднять время нескольких замеров
         for (unsigned int i = 0; i < 20; ++i) {
-            cl_event aplusb_event;
+            cl_event event;
             OCL_SAFE_CALL(clEnqueueNDRangeKernel(
                     command_queue,
                     aplusb_kernel,
@@ -306,11 +306,11 @@ int main()
                     &workGroupSize, // local_work_size,
                     0, // num_events_in_wait_list,
                     nullptr, // event_wait_list,
-                    &aplusb_event // event
+                    &event
             ));
             OCL_SAFE_CALL(clWaitForEvents(
                     1, // num_events,
-                    &aplusb_event // event_list
+                    &event // event_list
             ));
             t.nextLap(); // При вызове nextLap секундомер запоминает текущий замер (текущий круг) и начинает замерять время следующего круга
         }
@@ -342,19 +342,35 @@ int main()
     {
         timer t;
         for (unsigned int i = 0; i < 20; ++i) {
-            // clEnqueueReadBuffer...
+            cl_event event;
+            OCL_SAFE_CALL(clEnqueueReadBuffer(
+                    command_queue,
+                    cs_buffer, // buffer
+                    CL_TRUE, // blocking_read,
+                    0, // offset,
+                    buffer_size,
+                    cs.data(), // ptr,
+                    0, // num_events_in_wait_list,
+                    nullptr, // event_wait_list,
+                    &event
+            ));
+            OCL_SAFE_CALL(clWaitForEvents(
+                    1, // num_events,
+                    &event // event_list
+            ));
             t.nextLap();
         }
         std::cout << "Result data transfer time: " << t.lapAvg() << "+-" << t.lapStd() << " s" << std::endl;
-        std::cout << "VRAM -> RAM bandwidth: " << 0 << " GB/s" << std::endl;
+        double bandwidth = 3.0*n*sizeof(float) / t.lapAvg() / GB;
+        std::cout << "VRAM -> RAM bandwidth: " << bandwidth << " GB/s" << std::endl;
     }
 
     // TODO 16 Сверьте результаты вычислений со сложением чисел на процессоре (и убедитесь, что если в кернеле сделать намеренную ошибку, то эта проверка поймает ошибку)
-//    for (unsigned int i = 0; i < n; ++i) {
-//        if (cs[i] != as[i] + bs[i]) {
-//            throw std::runtime_error("CPU and GPU results differ!");
-//        }
-//    }
+    for (unsigned int i = 0; i < n; ++i) {
+        if (cs[i] != as[i] + bs[i]) {
+            throw std::runtime_error("CPU and GPU results differ!");
+        }
+    }
 
     OCL_SAFE_CALL(clReleaseKernel(aplusb_kernel));
     OCL_SAFE_CALL(clReleaseProgram(program));
