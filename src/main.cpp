@@ -210,7 +210,7 @@ int main()
         if (kernel_sources.empty()) {
             throw std::runtime_error("Empty source file! May be you forgot to configure working directory properly?");
         }
-        // std::cout << kernel_sources << std::endl;
+        std::cout << kernel_sources << std::endl;
     }
 
     // TODO 7 Создайте OpenCL-подпрограмму с исходниками кернела
