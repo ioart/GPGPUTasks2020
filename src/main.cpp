@@ -277,9 +277,9 @@ int main()
     OCL_SAFE_CALL(errcode_ret);
 
     // TODO 10 Выставите все аргументы в кернеле через clSetKernelArg (as_gpu, bs_gpu, cs_gpu и число значений, убедитесь, что тип количества элементов такой же в кернеле)
-    OCL_SAFE_CALL(clSetKernelArg(aplusb_kernel, 0, buffer_size, &as_buffer));
-    OCL_SAFE_CALL(clSetKernelArg(aplusb_kernel, 1, buffer_size, &bs_buffer));
-    OCL_SAFE_CALL(clSetKernelArg(aplusb_kernel, 2, buffer_size, &cs_buffer));
+    OCL_SAFE_CALL(clSetKernelArg(aplusb_kernel, 0, sizeof(cl_mem), &as_buffer));
+    OCL_SAFE_CALL(clSetKernelArg(aplusb_kernel, 1, sizeof(cl_mem), &bs_buffer));
+    OCL_SAFE_CALL(clSetKernelArg(aplusb_kernel, 2, sizeof(cl_mem), &cs_buffer));
     OCL_SAFE_CALL(clSetKernelArg(aplusb_kernel, 3, sizeof(unsigned), &n));
 
     // TODO 11 Выше увеличьте n с 1000*1000 до 100*1000*1000 (чтобы дальнейшие замеры были ближе к реальности)
@@ -313,6 +313,7 @@ int main()
                     &event // event_list
             ));
             t.nextLap(); // При вызове nextLap секундомер запоминает текущий замер (текущий круг) и начинает замерять время следующего круга
+            OCL_SAFE_CALL(clReleaseEvent(event));
         }
         // Среднее время круга (вычисления кернела) на самом деле считается не по всем замерам, а лишь с 20%-перцентайля по 80%-перцентайль (как и стандартное отклонение)
         // подробнее об этом - см. timer.lapsFiltered
@@ -359,6 +360,7 @@ int main()
                     &event // event_list
             ));
             t.nextLap();
+            OCL_SAFE_CALL(clReleaseEvent(event));
         }
         std::cout << "Result data transfer time: " << t.lapAvg() << "+-" << t.lapStd() << " s" << std::endl;
         double bandwidth = 3.0*n*sizeof(float) / t.lapAvg() / GB;
