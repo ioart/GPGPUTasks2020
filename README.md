@@ -28,12 +28,14 @@
 
 Потоки часто читают и очень редко пишут.
 
-Нельзя допустить чтобы когда кто-то пишет - кто-то читал. Нельзя допустить чтобы когда кто-то пишет - кто-то еще писал.
+Нельзя допустить чтобы когда кто-то пишет (вызывает ```union()```) - кто-то читал (вызывал ```get()```).
+
+Нельзя допустить чтобы когда кто-то пишет (вызывает ```union()```) - кто-то еще писал (вызывал ```union()```).
 
 У вас есть
 =========
 
-Можно пользоваться барьерами на локальную группу и операциями [atomic_add](https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/atomic_add.html) и [atomic_cmpxchg](https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/atomic_cmpxchg.html).
+Можно пользоваться барьерами на локальную группу и операциями [atomic_add](https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/atomic_add.html) и [atomic_cmpxchg](https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/atomic_cmpxchg.html) над локальными переменными.
 
 Задание
 =========
