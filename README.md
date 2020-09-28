@@ -6,7 +6,7 @@
 
 0. Сделать fork проекта
 1. Выполнить задание ниже
-2. Отправить **Pull-request** с названием```Task42 <Имя> <Фамилия> <Аффиляция>``` и укажите текстом PR дополненный вашим решением набросок кода предложенный ниже - обрамив тройными кавычками с указанием ```C++``` языка [после первой тройки кавычек](https://docs.github.com/en/free-pro-team@latest/github/writing-on-github/creating-and-highlighting-code-blocks#fenced-code-blocks).
+2. Отправить **Pull-request** с названием```Task42 <Имя> <Фамилия> <Аффиляция>``` и укажите текстом PR дополненный вашим решением набросок кода предложенный ниже - обрамив тройными кавычками с указанием ```C++``` языка [после первой тройки кавычек](https://docs.github.com/en/free-pro-team@latest/github/writing-on-github/creating-and-highlighting-code-blocks#fenced-code-blocks) (см. [пример](https://github.com/GPGPUCourse/GPGPUTasks2020/blame/b544d77cd4bc96b92b4a62d1eaaebf05075bf582/README.md#L45-L63)).
 
 **Дедлайн**: начало лекции 12 октября. Но задание необязательное и за него можно получить всего лишь один бонусный балл.
 
