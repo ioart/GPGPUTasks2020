@@ -57,12 +57,12 @@ int main()
     // Откройте 
     // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/
     // Нажмите слева: "OpenCL Runtime" -> "Query Platform Info" -> "clGetPlatformIDs"
-    // Прочитайте документацию clGetPlatformIDs и убедитесь что этот способ узнать сколько есть платформ соответствует документации:
+    // Прочитайте документацию clGetPlatformIDs и убедитесь, что этот способ узнать, сколько есть платформ, соответствует документации:
     cl_uint platformsCount = 0;
     OCL_SAFE_CALL(clGetPlatformIDs(0, nullptr, &platformsCount));
     std::cout << "Number of OpenCL platforms: " << platformsCount << std::endl;
 
-    // Тот же метод используется для того чтобы получить идентификаторы всех платформ - сверьтесь с документацией, что это сделано верно:
+    // Тот же метод используется для того, чтобы получить идентификаторы всех платформ - сверьтесь с документацией, что это сделано верно:
     std::vector<cl_platform_id> platforms(platformsCount);
     OCL_SAFE_CALL(clGetPlatformIDs(platformsCount, platforms.data(), nullptr));
 
@@ -83,8 +83,8 @@ int main()
         // P.S. Быстрый переход к файлу в CLion: Ctrl+Shift+N -> cl.h (или даже с номером строки: cl.h:103) -> Enter
         // Найдите там нужный код ошибки и ее название
         // Затем откройте документацию по clGetPlatformInfo и в секции Errors найдите ошибку, с которой столкнулись
-        // в документации подробно объясняется, какой ситуации соответствует данная ошибка, и это позволит проверив код понять чем же вызвана данная ошибка (не корректным аргументом param_name)
-        // Обратите внимание что в этом же libs/clew/CL/cl.h файле указаны всевоможные defines такие как CL_DEVICE_TYPE_GPU и т.п.
+        // в документации подробно объясняется, какой ситуации соответствует данная ошибка, и это позволит, проверив код, понять, чем же вызвана данная ошибка (некорректным аргументом param_name)
+        // Обратите внимание, что в этом же libs/clew/CL/cl.h файле указаны всевоможные defines, такие как CL_DEVICE_TYPE_GPU и т.п.
         try {
             std::size_t randomNumber = 239;
             OCL_SAFE_CALL(clGetPlatformInfo(platform, randomNumber, 0, nullptr, &platformNameSize));
@@ -99,7 +99,7 @@ int main()
         }
 
         // TODO 1.2
-        // Аналогично тому как был запрошен список идентификаторов всех платформ - так и с названием платформы, теперь, когда известна длина названия - его можно запросить:
+        // Аналогично тому, как был запрошен список идентификаторов всех платформ - так и с названием платформы, теперь, когда известна длина названия - его можно запросить:
         vchar platformName(platformNameSize, 0);
         OCL_SAFE_CALL(clGetPlatformInfo(platform, CL_PLATFORM_NAME, platformNameSize, platformName.data(), nullptr));
         std::cout << "- TODO 1.2: get Platform name" << std::endl;
@@ -115,7 +115,7 @@ int main()
         std::cout << "    Platform vendor: " << platformVendor.data() << std::endl;
 
         // TODO 2.1
-        // Запросите число доступных устройств данной платформы (аналогично тому как это было сделано для запроса числа доступных платформ - см. секцию "OpenCL Runtime" -> "Query Devices")
+        // Запросите число доступных устройств данной платформы (аналогично тому, как это было сделано для запроса числа доступных платформ - см. секцию "OpenCL Runtime" -> "Query Devices")
         cl_uint devicesCount = 0;
         OCL_SAFE_CALL(clGetDeviceIDs(platform, CL_DEVICE_TYPE_ALL, 0, nullptr, &devicesCount));
         std::cout << "- TODO 2.1: devices count" << std::endl;
