@@ -6,7 +6,7 @@
 
 __kernel void sum1(
         __global const unsigned* result,
-        __global const unsigned* as,
+        __global unsigned* as,
         unsigned n)
 {
     const unsigned id = get_global_id(0);
