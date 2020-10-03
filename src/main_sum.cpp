@@ -69,14 +69,17 @@ int main(int argc, char **argv)
         context.init(device.device_id_opencl);
         context.activate();
 
-        unsigned result = 0;
-        auto result_gpu = gpu::gpu_mem_32u::createN(1);
-        auto as_gpu = gpu::gpu_mem_32u::createN(n);
-        as_gpu.writeN(as.data(), n);
-
         unsigned int workGroupSize = 128;
         unsigned int global_work_size = (n + workGroupSize - 1) / workGroupSize * workGroupSize;
         gpu::WorkSize work_size(workGroupSize, global_work_size);
+
+        unsigned result = 0;
+        auto result_gpu = gpu::gpu_mem_32u::createN(1);
+
+        // Resize data array for the multiplicity to workgroup size.
+        as.resize(global_work_size, 0);
+        auto as_gpu = gpu::gpu_mem_32u::createN(global_work_size);
+        as_gpu.writeN(as.data(), global_work_size);
 
         {
             std::string kernel_name = "sum1";

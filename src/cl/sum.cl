@@ -10,11 +10,6 @@ __kernel void sum1(
         unsigned n)
 {
     const unsigned id = get_global_id(0);
-
-    if (id >= n) {
-        return;
-    }
-
     atomic_add(result, as[id]);
 }
 
@@ -33,9 +28,6 @@ __kernel void sum2(
     unsigned sum = 0;
     for (unsigned i = 0; i < values_per_work_item; ++i) {
         unsigned idx = id * values_per_work_item + i;
-        if (idx >= n) {
-            break;
-        }
         sum += as[idx];
     }
 
