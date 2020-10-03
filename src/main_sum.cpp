@@ -107,7 +107,27 @@ int main(int argc, char **argv)
             for (unsigned iter = 0; iter < benchmarkingIters; ++iter) {
                 unsigned empty = 0;
                 result_gpu.writeN(&empty, 1);
-                sum.exec(work_size, result_gpu, as_gpu, n, workGroupSize);
+                sum.exec(work_size, result_gpu, as_gpu, n, 64);
+
+                result_gpu.readN(&result, 1);
+                EXPECT_THE_SAME(reference_sum, result, "GPU result should be consistent!");
+                t.nextLap();
+            }
+            std::cout << "GPU:     " << kernel_name << std::endl;
+            std::cout << "GPU:     " << t.lapAvg() << "+-" << t.lapStd() << " s" << std::endl;
+            std::cout << "GPU:     " << n / 1e6 / t.lapAvg() << " millions/s" << std::endl;
+        }
+
+        {
+            std::string kernel_name = "sum3";
+            ocl::Kernel sum(sum_kernel, sum_kernel_length, kernel_name);
+            sum.compile();
+
+            timer t;
+            for (unsigned iter = 0; iter < benchmarkingIters; ++iter) {
+                unsigned empty = 0;
+                result_gpu.writeN(&empty, 1);
+                sum.exec(work_size, result_gpu, as_gpu, n, 64);
 
                 result_gpu.readN(&result, 1);
                 EXPECT_THE_SAME(reference_sum, result, "GPU result should be consistent!");
