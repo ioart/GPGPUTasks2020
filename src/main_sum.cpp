@@ -110,7 +110,7 @@ int main(int argc, char **argv)
             for (unsigned iter = 0; iter < benchmarkingIters; ++iter) {
                 unsigned empty = 0;
                 result_gpu.writeN(&empty, 1);
-                sum.exec(work_size, result_gpu, as_gpu, n, 64);
+                sum.exec(work_size, result_gpu, as_gpu, n);
 
                 result_gpu.readN(&result, 1);
                 EXPECT_THE_SAME(reference_sum, result, "GPU result should be consistent!");
@@ -130,7 +130,7 @@ int main(int argc, char **argv)
             for (unsigned iter = 0; iter < benchmarkingIters; ++iter) {
                 unsigned empty = 0;
                 result_gpu.writeN(&empty, 1);
-                sum.exec(work_size, result_gpu, as_gpu, n, 64);
+                sum.exec(work_size, result_gpu, as_gpu, n);
 
                 result_gpu.readN(&result, 1);
                 EXPECT_THE_SAME(reference_sum, result, "GPU result should be consistent!");

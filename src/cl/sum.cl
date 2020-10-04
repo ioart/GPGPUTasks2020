@@ -4,6 +4,14 @@
 
 #line 6
 
+#ifndef WORK_GROUP_SIZE
+#  define WORK_GROUP_SIZE 128
+#endif
+
+#ifndef VALUES_PER_WORK_ITEM
+#  define VALUES_PER_WORK_ITEM 64
+#endif
+
 __kernel void sum1(
         __global unsigned* result,
         __global const unsigned* as,
@@ -16,18 +24,17 @@ __kernel void sum1(
 __kernel void sum2(
         __global unsigned* result,
         __global const unsigned* as,
-        unsigned n,
-        unsigned values_per_work_item)
+        unsigned n)
 {
     const unsigned id = get_global_id(0);
 
-    if (id > n / values_per_work_item) {
+    if (id > n / VALUES_PER_WORK_ITEM) {
         return;
     }
 
     unsigned sum = 0;
-    for (unsigned i = 0; i < values_per_work_item; ++i) {
-        unsigned idx = id * values_per_work_item + i;
+    for (unsigned i = 0; i < VALUES_PER_WORK_ITEM; ++i) {
+        unsigned idx = id * VALUES_PER_WORK_ITEM + i;
         sum += as[idx];
     }
 
@@ -37,20 +44,19 @@ __kernel void sum2(
 __kernel void sum3(
         __global unsigned* result,
         __global const unsigned* as,
-        unsigned n,
-        unsigned values_per_work_item)
+        unsigned n)
 {
     const unsigned local_id = get_local_id(0);
     const unsigned group_id = get_group_id(0);
     const unsigned group_size = get_local_size(0);
 
-    if (group_id * group_size > n / values_per_work_item) {
+    if (group_id * group_size > n / VALUES_PER_WORK_ITEM) {
         return;
     }
 
     unsigned sum = 0;
-    for (unsigned i = 0; i < values_per_work_item; ++i) {
-        unsigned idx = group_id * group_size * values_per_work_item + i * group_size + local_id;
+    for (unsigned i = 0; i < VALUES_PER_WORK_ITEM; ++i) {
+        unsigned idx = group_id * group_size * VALUES_PER_WORK_ITEM + i * group_size + local_id;
         if (idx >= n) {
             break;
         }
