@@ -89,3 +89,30 @@ __kernel void sum4(
         atomic_add(result, local_as[0]);
     }
 }
+
+__kernel void sum5(
+        __global unsigned* result,
+        __global const unsigned* as,
+        unsigned n)
+{
+    const unsigned global_id = get_global_id(0);
+    const unsigned local_id = get_local_id(0);
+    const unsigned group_id = get_group_id(0);
+
+    if (global_id >= n) {
+        return;
+    }
+
+    __local unsigned local_as[WORK_GROUP_SIZE];
+    local_as[local_id] = as[global_id];
+
+    barrier(CLK_LOCAL_MEM_FENCE);
+    for (unsigned nvalues = WORK_GROUP_SIZE; nvalues > 1; nvalues /= 2) {
+        if (2 * local_id < nvalues) {
+            unsigned right = local_as[local_id + nvalues/2];
+            local_as[local_id] += right;
+        }
+        barrier(CLK_LOCAL_MEM_FENCE);
+    }
+    result[group_id] = local_as[0];
+}

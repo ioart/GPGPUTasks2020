@@ -162,5 +162,38 @@ int main(int argc, char **argv)
             std::cout << "GPU:     " << n / 1e6 / t.lapAvg() << " millions/s" << std::endl;
         }
 
+        {
+            std::string kernel_name = "sum5";
+            std::string defines = "-D WORK_GROUP_SIZE=" + std::to_string(workGroupSize);
+            ocl::Kernel sum(sum_kernel, sum_kernel_length, kernel_name, defines);
+            sum.compile();
+
+            std::vector<unsigned> empty(global_work_size, 0);
+            auto bs_gpu = gpu::gpu_mem_32u::createN(global_work_size);
+
+            timer t;
+            for (unsigned iter = 0; iter < benchmarkingIters; ++iter) {
+                auto input = bs_gpu;
+                auto output = as_gpu;
+                unsigned data_size = global_work_size;
+
+                while (data_size > 1) {
+                    data_size = (data_size + workGroupSize - 1) / workGroupSize * workGroupSize;
+                    EXPECT_THE_SAME(data_size % workGroupSize, 0u, "data size should be a multiple of workgroup size");
+                    std::swap(input, output);
+                    output.writeN(empty.data(), global_work_size);
+                    sum.exec(work_size, output, input, data_size);
+                    data_size /= workGroupSize;
+                }
+
+                output.readN(&result, 1);
+                EXPECT_THE_SAME(reference_sum, result, "GPU result should be consistent!");
+                t.nextLap();
+            }
+            std::cout << "GPU:     " << kernel_name << std::endl;
+            std::cout << "GPU:     " << t.lapAvg() << "+-" << t.lapStd() << " s" << std::endl;
+            std::cout << "GPU:     " << n / 1e6 / t.lapAvg() << " millions/s" << std::endl;
+        }
+
     }
 }
