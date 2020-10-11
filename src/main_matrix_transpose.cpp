@@ -20,51 +20,51 @@ int main(int argc, char **argv)
     context.activate();
 
     int benchmarkingIters = 10;
-    unsigned int M = 1024;
-    unsigned int K = 1024;
+    unsigned int H = 1024;
+    unsigned int W = 1024;
 
-    std::vector<float> as(M*K, 0);
-    std::vector<float> as_t(M*K, 0);
+    std::vector<float> as(H * W, 0);
+    std::vector<float> as_t(H * W, 0);
 
-    FastRandom r(M+K);
+    FastRandom r(H + W);
     for (auto& x : as) {
         x = r.nextf();
     }
-    std::cout << "Data generated for M=" << M << ", K=" << K << "!" << std::endl;
+    std::cout << "Data generated for H=" << H << ", W=" << W << "!" << std::endl;
 
     gpu::gpu_mem_32f as_gpu, as_t_gpu;
-    as_gpu.resizeN(M*K);
-    as_t_gpu.resizeN(K*M);
+    as_gpu.resizeN(H * W);
+    as_t_gpu.resizeN(W * H);
 
-    as_gpu.writeN(as.data(), M*K);
+    as_gpu.writeN(as.data(), H * W);
+
+    unsigned int tile_size = 16;
+    unsigned int work_size_x = (H + tile_size - 1) / tile_size * tile_size;
+    unsigned int work_size_y = (W + tile_size - 1) / tile_size * tile_size;
+    auto work_size = gpu::WorkSize(tile_size, tile_size, work_size_x, work_size_y);
 
     {
-        unsigned int tile_size = 16;
-        unsigned int work_size_x = (M + tile_size - 1) / tile_size * tile_size;
-        unsigned int work_size_y = (K + tile_size - 1) / tile_size * tile_size;
-
         std::string defines = "-D TILE_SIZE=" + std::to_string(tile_size);
         ocl::Kernel matrix_transpose_kernel(matrix_transpose, matrix_transpose_length, "matrix_transpose", defines);
         matrix_transpose_kernel.compile();
 
         timer t;
-        auto work_size = gpu::WorkSize(tile_size, tile_size, work_size_x, work_size_y);
         for (int iter = 0; iter < benchmarkingIters; ++iter) {
-            matrix_transpose_kernel.exec(work_size, as_gpu, as_t_gpu, M, K);
+            matrix_transpose_kernel.exec(work_size, as_gpu, as_t_gpu, H, W);
 
             t.nextLap();
         }
         std::cout << "GPU: " << t.lapAvg() << "+-" << t.lapStd() << " s" << std::endl;
-        std::cout << "GPU: " << M * K / 1e6 / t.lapAvg() << " millions/s" << std::endl;
+        std::cout << "GPU: " << H * W / 1e6 / t.lapAvg() << " millions/s" << std::endl;
     }
 
-    as_t_gpu.readN(as_t.data(), M*K);
+    as_t_gpu.readN(as_t.data(), H * W);
 
     // Проверяем корректность результатов
-    for (unsigned j = 0; j < M; ++j) {
-        for (unsigned i = 0; i < K; ++i) {
-            float a = as[j * K + i];
-            float b = as_t[i * M + j];
+    for (unsigned j = 0; j < H; ++j) {
+        for (unsigned i = 0; i < W; ++i) {
+            float a = as[j * W + i];
+            float b = as_t[i * H + j];
             if (a != b) {
                 std::cerr << "Not the same!" << std::endl;
                 return 1;
