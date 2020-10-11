@@ -11,6 +11,25 @@
 #include <stdexcept>
 
 
+bool check_transpose(
+        const std::vector<float> &as,
+        const std::vector<float> &as_t,
+        unsigned H,
+        unsigned W)
+{
+    for (unsigned j = 0; j < H; ++j) {
+        for (unsigned i = 0; i < W; ++i) {
+            float a = as[j * W + i];
+            float b = as_t[i * H + j];
+            if (a != b) {
+                std::cerr << "Not the same!" << std::endl;
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 int main(int argc, char **argv)
 {
     gpu::Device device = gpu::chooseGPUDevice(argc, argv);
@@ -44,9 +63,13 @@ int main(int argc, char **argv)
     auto work_size = gpu::WorkSize(tile_size, tile_size, work_size_x, work_size_y);
 
     {
+        std::string kernel_name = "matrix_transpose1";
         std::string defines = "-D TILE_SIZE=" + std::to_string(tile_size);
-        ocl::Kernel matrix_transpose_kernel(matrix_transpose, matrix_transpose_length, "matrix_transpose", defines);
+        ocl::Kernel matrix_transpose_kernel(matrix_transpose, matrix_transpose_length, kernel_name, defines);
         matrix_transpose_kernel.compile();
+
+        std::vector<float> empty(H * W, 0.0f);
+        as_t_gpu.writeN(empty.data(), H * W);
 
         timer t;
         for (int iter = 0; iter < benchmarkingIters; ++iter) {
@@ -54,23 +77,43 @@ int main(int argc, char **argv)
 
             t.nextLap();
         }
+        std::cout << "GPU: " << kernel_name << std::endl;
         std::cout << "GPU: " << t.lapAvg() << "+-" << t.lapStd() << " s" << std::endl;
         std::cout << "GPU: " << H * W / 1e6 / t.lapAvg() << " millions/s" << std::endl;
-    }
 
-    as_t_gpu.readN(as_t.data(), H * W);
-
-    // Проверяем корректность результатов
-    for (unsigned j = 0; j < H; ++j) {
-        for (unsigned i = 0; i < W; ++i) {
-            float a = as[j * W + i];
-            float b = as_t[i * H + j];
-            if (a != b) {
-                std::cerr << "Not the same!" << std::endl;
-                return 1;
-            }
+        // Проверяем корректность результатов
+        as_t_gpu.readN(as_t.data(), H * W);
+        if (!check_transpose(as, as_t, H, W)) {
+            return 1;
         }
     }
+
+    {
+        std::string kernel_name = "matrix_transpose2";
+        std::string defines = "-D TILE_SIZE=" + std::to_string(tile_size);
+        ocl::Kernel matrix_transpose_kernel(matrix_transpose, matrix_transpose_length, kernel_name, defines);
+        matrix_transpose_kernel.compile();
+
+        std::vector<float> empty(H * W, 0.0f);
+        as_t_gpu.writeN(empty.data(), H * W);
+
+        timer t;
+        for (int iter = 0; iter < benchmarkingIters; ++iter) {
+            matrix_transpose_kernel.exec(work_size, as_gpu, as_t_gpu, H, W);
+
+            t.nextLap();
+        }
+        std::cout << "GPU: " << kernel_name << std::endl;
+        std::cout << "GPU: " << t.lapAvg() << "+-" << t.lapStd() << " s" << std::endl;
+        std::cout << "GPU: " << H * W / 1e6 / t.lapAvg() << " millions/s" << std::endl;
+
+        // Проверяем корректность результатов
+        as_t_gpu.readN(as_t.data(), H * W);
+        if (!check_transpose(as, as_t, H, W)) {
+            return 1;
+        }
+    }
+
 
     return 0;
 }

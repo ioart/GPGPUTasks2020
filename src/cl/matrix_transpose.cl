@@ -9,7 +9,20 @@
 #endif
 
 
-__kernel void matrix_transpose(
+__kernel void matrix_transpose1(
+        __global const float *a,
+        __global float *at,
+        unsigned H,
+        unsigned W)
+{
+    size_t i = get_global_id(0);
+    size_t j = get_global_id(1);
+
+    at[j * W + i] = a[i * H + j];
+}
+
+
+__kernel void matrix_transpose2(
         __global const float *a,
         __global float *at,
         unsigned H,
