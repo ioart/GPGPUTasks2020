@@ -14,8 +14,8 @@
 bool check_transpose(
         const std::vector<float> &as,
         const std::vector<float> &as_t,
-        unsigned H,
-        unsigned W)
+        unsigned W,
+        unsigned H)
 {
     for (unsigned j = 0; j < H; ++j) {
         for (unsigned i = 0; i < W; ++i) {
@@ -58,8 +58,8 @@ int main(int argc, char **argv)
     as_gpu.writeN(as.data(), H * W);
 
     unsigned int tile_size = 16;
-    unsigned int work_size_x = (H + tile_size - 1) / tile_size * tile_size;
-    unsigned int work_size_y = (W + tile_size - 1) / tile_size * tile_size;
+    unsigned int work_size_x = (W + tile_size - 1) / tile_size * tile_size;
+    unsigned int work_size_y = (H + tile_size - 1) / tile_size * tile_size;
     auto work_size = gpu::WorkSize(tile_size, tile_size, work_size_x, work_size_y);
 
     {
@@ -73,7 +73,7 @@ int main(int argc, char **argv)
 
         timer t;
         for (int iter = 0; iter < benchmarkingIters; ++iter) {
-            matrix_transpose_kernel.exec(work_size, as_gpu, as_t_gpu, H, W);
+            matrix_transpose_kernel.exec(work_size, as_gpu, as_t_gpu, W, H);
 
             t.nextLap();
         }
@@ -83,9 +83,7 @@ int main(int argc, char **argv)
 
         // Проверяем корректность результатов
         as_t_gpu.readN(as_t.data(), H * W);
-        if (!check_transpose(as, as_t, H, W)) {
-            return 1;
-        }
+        check_transpose(as, as_t, W, H);
     }
 
     {
@@ -99,7 +97,7 @@ int main(int argc, char **argv)
 
         timer t;
         for (int iter = 0; iter < benchmarkingIters; ++iter) {
-            matrix_transpose_kernel.exec(work_size, as_gpu, as_t_gpu, H, W);
+            matrix_transpose_kernel.exec(work_size, as_gpu, as_t_gpu, W, H);
 
             t.nextLap();
         }
@@ -109,9 +107,7 @@ int main(int argc, char **argv)
 
         // Проверяем корректность результатов
         as_t_gpu.readN(as_t.data(), H * W);
-        if (!check_transpose(as, as_t, H, W)) {
-            return 1;
-        }
+        check_transpose(as, as_t, W, H);
     }
 
 

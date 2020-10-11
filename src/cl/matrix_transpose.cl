@@ -12,21 +12,23 @@
 __kernel void matrix_transpose1(
         __global const float *a,
         __global float *at,
-        unsigned H,
-        unsigned W)
+        unsigned W,
+        unsigned H)
 {
     size_t i = get_global_id(0);
     size_t j = get_global_id(1);
 
-    at[j * W + i] = a[i * H + j];
+    if (i < W && j < H) {
+        at[i * H + j] = a[j * W + i];
+    }
 }
 
 
 __kernel void matrix_transpose2(
         __global const float *a,
         __global float *at,
-        unsigned H,
-        unsigned W)
+        unsigned W,
+        unsigned H)
 {
     size_t i = get_global_id(0);
     size_t j = get_global_id(1);
@@ -45,6 +47,7 @@ __kernel void matrix_transpose2(
 
     barrier(CLK_LOCAL_MEM_FENCE);
     // Check the array indexes which can be smaller than the work size.
-    if (j < W && i < H)
+    if (i < W && j < H) {
         at[i * H + j] = tile[local_j][local_i];
+    }
 }
