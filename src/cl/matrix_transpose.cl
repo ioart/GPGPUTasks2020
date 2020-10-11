@@ -41,13 +41,10 @@ __kernel void matrix_transpose2(
     tile[local_j][local_i] = a[j * W + i];
 
     barrier(CLK_LOCAL_MEM_FENCE);
-    float tmp = tile[local_j][local_i];
-    tile[local_j][local_i] = tile[local_i][local_j];
-    tile[local_i][local_j] = tmp;
-
-    barrier(CLK_LOCAL_MEM_FENCE);
     // Check the array indexes which can be smaller than the work size.
-    if (i < W && j < H) {
-        at[i * H + j] = tile[local_j][local_i];
+    unsigned ii = i - local_i + local_j;
+    unsigned jj = j - local_j + local_i;
+    if (ii < W && jj < H) {
+        at[ii * H + jj] = tile[local_i][local_j];
     }
 }
