@@ -57,7 +57,7 @@ int main(int argc, char **argv)
     as_gpu.resizeN(n);
 
     {
-        unsigned int workGroupSize = 4;
+        unsigned int workGroupSize = 128;
         unsigned int global_work_size = (n + workGroupSize - 1) / workGroupSize * workGroupSize;
 
         std::string defines = "-D WORK_GROUP_SIZE=" + std::to_string(workGroupSize);
