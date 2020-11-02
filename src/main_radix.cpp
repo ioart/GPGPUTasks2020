@@ -11,6 +11,25 @@
 #include <iostream>
 #include <stdexcept>
 
+//#define DEBUG
+//#define DEBUG_KERNEL
+
+
+void print(const std::string& str) {
+#ifdef DEBUG
+    std::cout << str << std::endl;
+#endif
+}
+
+template<class T>
+void print(const std::vector<T>& v) {
+#ifdef DEBUG
+    for (const auto &x : v) {
+        std::cout << x << ' ';
+    }
+    std::cout << std::endl;
+#endif
+}
 
 template<typename T>
 void raiseFail(const T &a, const T &b, std::string message, std::string filename, int line)
@@ -52,24 +71,71 @@ int main(int argc, char **argv)
         std::cout << "CPU: " << t.lapAvg() << "+-" << t.lapStd() << " s" << std::endl;
         std::cout << "CPU: " << (n/1000/1000) / t.lapAvg() << " millions/s" << std::endl;
     }
-/*
+
     gpu::gpu_mem_32u as_gpu;
+    gpu::gpu_mem_32u tmp_gpu;
+    gpu::gpu_mem_32u prefix_tree_gpu;
+    gpu::gpu_mem_32u prefix_sums_gpu;
+
     as_gpu.resizeN(n);
+    tmp_gpu.resizeN(n);
+    prefix_tree_gpu.resizeN(n);
+    prefix_sums_gpu.resizeN(n);
 
     {
-        ocl::Kernel radix(radix_kernel, radix_kernel_length, "radix");
+        unsigned int workGroupSize = 128;
+        unsigned int global_work_size = (n + workGroupSize - 1) / workGroupSize * workGroupSize;
+        std::string defines = "-D WORK_GROUP_SIZE=" + std::to_string(workGroupSize);
+#ifdef DEBUG_KERNEL
+        defines += "; -D DEBUG";
+#endif
+
+        ocl::Kernel init_by_bit(radix_kernel, radix_kernel_length, "init_by_bit", defines);
+        ocl::Kernel prefix_tree(radix_kernel, radix_kernel_length, "prefix_tree", defines);
+        ocl::Kernel prefix_sum_on_tree(radix_kernel, radix_kernel_length, "prefix_sum_on_tree", defines);
+        ocl::Kernel radix(radix_kernel, radix_kernel_length, "radix", defines);
+
+        init_by_bit.compile();
+        prefix_tree.compile();
+        prefix_sum_on_tree.compile();
         radix.compile();
+
+        print("as:");
+        print(as);
 
         timer t;
         for (int iter = 0; iter < benchmarkingIters; ++iter) {
+
             as_gpu.writeN(as.data(), n);
 
             t.restart(); // Запускаем секундомер после прогрузки данных чтобы замерять время работы кернела, а не трансфер данных
 
-            unsigned int workGroupSize = 128;
-            unsigned int global_work_size = (n + workGroupSize - 1) / workGroupSize * workGroupSize;
-            radix.exec(gpu::WorkSize(workGroupSize, global_work_size),
-                       as_gpu, n);
+            for (unsigned bit = 0; bit < 31; ++bit) {
+                print("==================================================");
+                print("bit " + std::to_string(bit));
+
+                // Init prefix_tree_gpu (1 if bit `bit` is 0)
+                init_by_bit.exec(gpu::WorkSize(workGroupSize, global_work_size),
+                                 prefix_tree_gpu, as_gpu, n, bit);
+
+                // Create prefix tree
+                for (unsigned block_size = 1; block_size < n; block_size *= 2) {
+                    auto a = global_work_size / (2 * block_size);
+                    prefix_tree.exec(gpu::WorkSize(workGroupSize, a),
+                                     prefix_tree_gpu, n, block_size);
+                }
+
+                // Calc prefix sum on prefix tree
+                prefix_sum_on_tree.exec(gpu::WorkSize(workGroupSize, global_work_size),
+                                        prefix_sums_gpu, prefix_tree_gpu, n);
+
+                // Run radix sort using prefix_sums
+                radix.exec(gpu::WorkSize(workGroupSize, global_work_size),
+                           tmp_gpu, as_gpu, prefix_sums_gpu, n, bit);
+
+                tmp_gpu.swap(as_gpu);
+            }
+
             t.nextLap();
         }
         std::cout << "GPU: " << t.lapAvg() << "+-" << t.lapStd() << " s" << std::endl;
@@ -78,10 +144,12 @@ int main(int argc, char **argv)
         as_gpu.readN(as.data(), n);
     }
 
+    print("result:");
+    print(as);
+
     // Проверяем корректность результатов
     for (int i = 0; i < n; ++i) {
         EXPECT_THE_SAME(as[i], cpu_sorted[i], "GPU results should be equal to CPU results!");
     }
-*/
     return 0;
 }
