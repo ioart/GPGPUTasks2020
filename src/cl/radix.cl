@@ -58,22 +58,31 @@ __kernel void prefix_sum_on_tree(
         unsigned as_size)
 {
     unsigned global_id = get_global_id(0);
+    unsigned local_id = get_local_id(0);
 
-    if (global_id < as_size) {
-        unsigned cumm = 0;
-        unsigned summ = 0;
-        for (unsigned mask = 1 << 31; mask != 0; mask >>= 1) {
-            unsigned value = (global_id + 1) & mask;
-            if (value) {
-                cumm += value;
-                summ += as[cumm - 1];
-#ifdef DEBUG
-                printf("%u:    %u  %u\n", mask, value, cumm);
-#endif
-            }
-        }
-        prefix_sums[global_id] = summ;
+    if (global_id >= as_size) {
+        return;
     }
+
+    __local unsigned local_as[WORK_GROUP_SIZE];
+    local_as[local_id] = as[global_id];
+
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    unsigned summ = 0;
+    for (unsigned mask = 1; mask < WORK_GROUP_SIZE; mask *= 2) {
+        if ((global_id + 1) & mask) {
+             unsigned index = global_id - (global_id + 1) % mask;
+             summ += local_as[index % WORK_GROUP_SIZE];
+        }
+    }
+    for (unsigned mask = WORK_GROUP_SIZE; mask <= as_size; mask *= 2) {
+        if ((global_id + 1) & mask) {
+             unsigned index = global_id - (global_id + 1) % mask;
+             summ += as[index];
+        }
+    }
+    prefix_sums[global_id] = summ;
 }
 
 /**
@@ -89,11 +98,13 @@ __kernel void radix(
     unsigned global_id = get_global_id(0);
     if (global_id < as_size) {
         unsigned is_one = as[global_id] & (1 << bit);
+        unsigned sum_zeros = prefix_sums[global_id];
+        unsigned all_zeros = prefix_sums[as_size - 1];
         // Number of 'zeros' on the left side.
-        unsigned to = prefix_sums[global_id] - 1;
+        unsigned to = sum_zeros - 1;
         if (is_one) {
             // Number of 'ones' on the left size + total number of 'zeros'.
-            to = (global_id - prefix_sums[global_id]) + prefix_sums[as_size - 1];
+            to = (global_id - sum_zeros) + all_zeros;
         }
 #ifdef DEBUG
         printf("set %u -> %u\n", global_id, to);
